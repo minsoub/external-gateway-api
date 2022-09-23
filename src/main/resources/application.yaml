@@ -1,6 +1,6 @@
 # Spring Cloud Gateway server port
 server:
-  port: 7070
+  port: 7071
 management:
   endpoints:
     web:
@@ -33,13 +33,7 @@ spring:
 logging:
   config: classpath:logback-spring-${spring.profiles.active}.xml
 sites:
-  auth-url: http://localhost:8080
-  smart-admin-url: http://localhost:8081
-  smart-admin-lrc-url: http://localhost:8082
-  smart-admin-cpc-url: http://localhost:8083
-  lrc-app-url: http://localhost:8084
-  cpc-app-url: http://localhost:8085
-  lrc-token-ignore: /api/v1/lrc/captcha/siteverify,/api/v1/lrc/scam/mail,/api/v1/lrc/user/join,/api/v1/lrc/user/join/certification,/api/v1/lrc/user/password/reset,/api/v1/lrc/user/password/reset/email
+  smart-admin-gateway-url: http://localhost:7070
 ---
 spring:
   config:

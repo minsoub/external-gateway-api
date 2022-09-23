@@ -25,6 +25,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpRequestDecorator;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
@@ -53,6 +54,10 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
     return Mono.defer(() -> {
       ServerHttpRequest serverHttpRequest = exchange.getRequest();
       HttpHeaders httpHeaders = serverHttpRequest.getHeaders();
+
+      ServerHttpResponse response = exchange.getResponse();
+      response.getHeaders().add("site-type", "external-gateway");
+
       if (serverHttpRequest.getMethod() == HttpMethod.GET
           || (exchange.getRequest().getHeaders().getContentType() != null
               && exchange.getRequest().getHeaders().getContentType().toString().contains(MediaType.MULTIPART_FORM_DATA_VALUE))) {

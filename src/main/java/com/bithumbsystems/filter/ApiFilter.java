@@ -42,16 +42,8 @@ import reactor.netty.resources.ConnectionProvider;
 @Component
 public class ApiFilter extends AbstractGatewayFilterFactory<Config> {
 
-  @Value("${sites.auth-url}")
-  private String authUrl;
-  @Value("${sites.smart-admin-url}")
-  private String smartAdminUrl;
-  @Value("${sites.lrc-app-url}")
-  private String lrcAppUrl;
-  @Value("${sites.cpc-app-url}")
-  private String cpcAppUrl;
-  @Value("#{'${sites.lrc-token-ignore}'.split(',')}")
-  private List<String> tokenIgnoreLrc;
+  @Value("${sites.smart-admin-gateway-url}")
+  private String smartAdminGatewayUrl;
 
   public ApiFilter() {
     super(Config.class);
@@ -60,25 +52,6 @@ public class ApiFilter extends AbstractGatewayFilterFactory<Config> {
   @Bean
   public ErrorWebExceptionHandler exceptionHandler() {
     return new GatewayExceptionHandler();
-  }
-
-  public WebClient getWebClient(String url) {
-    ConnectionProvider provider = ConnectionProvider.builder("fixed")
-        .maxIdleTime(Duration.ofSeconds(20))
-        .maxLifeTime(Duration.ofSeconds(600))
-        .pendingAcquireTimeout(Duration.ofSeconds(60))
-        .evictInBackground(Duration.ofSeconds(120)).build();
-
-    HttpClient httpClient = HttpClient.create(provider)
-        .doOnConnected(
-            conn -> conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
-                .addHandlerLast(new WriteTimeoutHandler(120, TimeUnit.SECONDS))
-        ).compress(true).wiretap(true);
-
-    return WebClient.builder()
-        .baseUrl(url)
-        .clientConnector(new ReactorClientHttpConnector(httpClient))
-        .build();
   }
 
   @Override
@@ -100,9 +73,7 @@ public class ApiFilter extends AbstractGatewayFilterFactory<Config> {
       String siteId = validateRequest(request);
       log.debug("site_id => {}", siteId);
 
-      log.debug("properties url [lrc : {}, cp : {}, mng : {}", lrcAppUrl, cpcAppUrl, smartAdminUrl);
-      log.debug("authUrl : {}", authUrl);
-      AtomicReference<String> goUrl = getRedirectUrl(siteId);
+      AtomicReference<String> goUrl = new AtomicReference<>(smartAdminGatewayUrl);
 
       // Header에 user_ip를 넣어야 한다.
       log.debug(exchange.getRequest().getURI().toString());
@@ -116,140 +87,17 @@ public class ApiFilter extends AbstractGatewayFilterFactory<Config> {
         replaceUrl += "?" + exchange.getRequest().getURI().getRawQuery();
       }
       log.debug("replaceUrl:" + replaceUrl);
-      URI uri = URI.create(replaceUrl);
-      ServerHttpRequest serverHttpRequest = exchange.getRequest().mutate()
-          .headers(httpHeaders -> httpHeaders.add("user_ip", userIp))
-          .uri(uri)
-          .build();
-      log.debug(">>> tokenIgnoreLrc: {}",
-          tokenIgnoreLrc.contains(exchange.getRequest().getURI().getPath()));
 
-      if (siteId.equals(GlobalConstant.CPC_SITE_ID)) {   // 투자보호 센터 : No Token
-        return cpcTransfer(exchange, chain, serverHttpRequest);
-      } else if (isLrcTransferWithoutAuth(exchange, siteId)) {
-        return transferApiWithoutAuth(
-            "lrc token ignore path:" + exchange.getRequest().getURI().getPath(),
-            chain, exchange, serverHttpRequest);
-      } else { // mng, lrc
-        // Request Header 검증 : Token
-        TokenRequest req = getTokenRequest(request, userIp, siteId);
+      return chain.filter(exchange).doOnError(e -> {
+        log.error(e.getMessage());
+        throw new GatewayException(ErrorCode.SERVER_RESPONSE_ERROR);
+      }).then(Mono.fromRunnable(()-> {
+        if (config.isPostLogger()) {
+          log.info("UserFilter End: {}", exchange.getResponse());
+        }
+      }));
 
-        return checkAuthorization(req)
-            .flatMap(result -> {
-              log.debug("success result => {}", result);
-              log.debug("exchange.getRequest => {}", exchange.getRequest().getURI());
-              return transferApi(config, exchange, chain, serverHttpRequest);
-            });
-      }
     };
-  }
-
-  private boolean isLrcTransferWithoutAuth(ServerWebExchange exchange, String siteId) {
-    return siteId.equals(GlobalConstant.LRC_SITE_ID) && (
-        tokenIgnoreLrc.contains(exchange.getRequest().getURI().getPath())
-            || (exchange.getRequest().getURI().getPath()).indexOf("/api/v1/lrc/user/join/valid")
-            == 0
-            || (exchange.getRequest().getURI().getPath()).indexOf(
-            "/api/v1/lrc/user/password/reset/info") == 0
-    );
-  }
-
-  private Mono<Void> transferApi(Config config, ServerWebExchange exchange,
-      GatewayFilterChain chain, ServerHttpRequest serverHttpRequest) {
-    return chain.filter(exchange.mutate().request(serverHttpRequest).build())
-        .doOnError(e -> {
-          log.error(e.getMessage());
-          if (e instanceof org.springframework.web.server.ResponseStatusException) {
-            String httpStatusText = String.valueOf(((ResponseStatusException) e).getStatus());
-            log.debug(">> ResponseStatusException:{}",
-                httpStatusText);  // >> ResponseStatusException:504 GATEWAY_TIMEOUT
-            throw new GatewayStatusException(httpStatusText);
-          } else {
-            throw new GatewayException(ErrorCode.SERVER_RESPONSE_ERROR);
-          }
-        })
-        .then(Mono.fromRunnable(() -> {
-          if (config.isPostLogger()) {
-            log.info("ApiFilter End: {}", exchange.getResponse());
-          }
-        }));
-  }
-
-  private Mono<String> checkAuthorization(TokenRequest req) {
-    return getWebClient(authUrl).mutate().build()
-        .method(HttpMethod.POST)
-        .uri("/api/v1/authorize")
-        .accept(MediaType.APPLICATION_JSON)
-        .body(BodyInserters.fromValue(req))
-        .retrieve()
-        .onStatus(
-            httpStatus -> httpStatus != HttpStatus.OK,
-            clientResponse -> clientResponse.createException()
-                .flatMap(
-                    it -> {
-                      if (it.getStatusCode().equals(HttpStatus.CONFLICT)) {
-                        return Mono.error(new GatewayException(ErrorCode.USER_ALREADY_LOGIN));
-                      } else {
-                        return Mono.error(new GatewayException(ErrorCode.EXPIRED_TOKEN));
-                      }
-                    }))
-        .bodyToMono(String.class)
-        .doOnError(error -> {
-          log.error("error {}", error.getMessage());
-          if(error.getMessage().equals(ErrorCode.USER_ALREADY_LOGIN.toString())) {
-            throw new GatewayException(ErrorCode.USER_ALREADY_LOGIN);
-          }
-          throw new GatewayException(ErrorCode.EXPIRED_TOKEN);
-        });
-  }
-
-  private TokenRequest getTokenRequest(ServerHttpRequest request, String userIp, String siteId) {
-    if (!request.getHeaders().containsKey(GlobalConstant.TOKEN_HEADER)) {
-      throw new GatewayException(ErrorCode.INVALID_HEADER_TOKEN);
-    }
-    String token = Objects.requireNonNull(
-            request.getHeaders().getFirst(GlobalConstant.TOKEN_HEADER))
-        .substring(GlobalConstant.BEARER.length())
-        .trim();
-
-    log.debug("token => {}", token);
-    // Token 검증
-    TokenRequest req = TokenRequest.builder()
-        .site_id(siteId)
-        .user_ip(userIp)
-        .token(token)
-        .build();
-
-    log.debug("token data => {}", req);
-    return req;
-  }
-
-  private Mono<Void> transferApiWithoutAuth(String exchange, GatewayFilterChain chain,
-      ServerWebExchange exchange1, ServerHttpRequest serverHttpRequest) {
-    log.debug(exchange);
-    return chain.filter(exchange1.mutate().request(serverHttpRequest).build()).doOnError(e -> {
-      log.error(e.getMessage());
-      throw new GatewayException(ErrorCode.SERVER_RESPONSE_ERROR);
-    });
-  }
-
-  private Mono<Void> cpcTransfer(ServerWebExchange exchange, GatewayFilterChain chain,
-      ServerHttpRequest serverHttpRequest) {
-    return transferApiWithoutAuth("cpc_site_id ", chain, exchange, serverHttpRequest);
-  }
-
-  private AtomicReference<String> getRedirectUrl(String siteId) {
-    AtomicReference<String> goUrl = new AtomicReference<>("");
-
-    // Redirect URI
-    if (siteId.equals(GlobalConstant.LRC_SITE_ID)) {
-      goUrl.set(lrcAppUrl);
-    } else if (siteId.equals(GlobalConstant.CPC_SITE_ID)) {
-      goUrl.set(cpcAppUrl);
-    } else {
-      goUrl.set(smartAdminUrl);
-    }
-    return goUrl;
   }
 
   private String validateRequest(ServerHttpRequest request) {

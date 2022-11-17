@@ -1,6 +1,6 @@
 # Spring Cloud Gateway server port
 server:
-  port: 7071
+  port: 7070
 management:
   endpoints:
     web:

@@ -43,7 +43,7 @@ spring:
 logging:
   config: classpath:logback-spring-${spring.profiles.active}.xml
 sites:
-  smart-admin-gateway-url: https://gatewayapi.bithumbsystems.com
+  smart-admin-gateway-url: http://k8s-systemsd-systemsg-d8965d6033-f02444dccaaaabac.elb.ap-northeast-2.amazonaws.com
   lrc-token-ignore: /api/v1/lrc/captcha/siteverify,/api/v1/lrc/scam/mail,/api/v1/lrc/user/join,/api/v1/lrc/user/join/certification,/api/v1/lrc/user/password/reset,/api/v1/lrc/user/password/reset/email
 ---
 spring:

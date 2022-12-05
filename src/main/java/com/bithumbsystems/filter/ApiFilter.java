@@ -2,41 +2,26 @@ package com.bithumbsystems.filter;
 
 import com.bithumbsystems.config.Config;
 import com.bithumbsystems.config.constant.GlobalConstant;
+import com.bithumbsystems.config.properties.UrlProperties;
 import com.bithumbsystems.exception.GatewayException;
 import com.bithumbsystems.exception.GatewayExceptionHandler;
-import com.bithumbsystems.exception.GatewayStatusException;
 import com.bithumbsystems.model.enums.ErrorCode;
-import com.bithumbsystems.request.TokenRequest;
 import com.bithumbsystems.utils.CommonUtil;
-import io.netty.handler.timeout.ReadTimeoutHandler;
-import io.netty.handler.timeout.WriteTimeoutHandler;
-import java.net.URI;
-import java.time.Duration;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
+
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
-import reactor.netty.http.client.HttpClient;
-import reactor.netty.resources.ConnectionProvider;
 
 @Slf4j
 @Component
@@ -44,6 +29,7 @@ public class ApiFilter extends AbstractGatewayFilterFactory<Config> {
 
   @Value("${sites.smart-admin-gateway-url}")
   private String smartAdminGatewayUrl;
+
 
   public ApiFilter() {
     super(Config.class);
@@ -66,12 +52,15 @@ public class ApiFilter extends AbstractGatewayFilterFactory<Config> {
 
       ServerHttpRequest request = exchange.getRequest();
       log.debug("header => {}", request.getHeaders());
+      log.debug("host => {}", request.getURI().getHost());
       // 사용자 IP check
       String userIp = CommonUtil.getUserIp(request);
       log.debug("user IP => {}", userIp);
 
       String siteId = validateRequest(request);
       log.debug("site_id => {}", siteId);
+
+      validateDomains(config, siteId, request.getURI().getHost());
 
       AtomicReference<String> goUrl = new AtomicReference<>(smartAdminGatewayUrl);
 
@@ -96,7 +85,6 @@ public class ApiFilter extends AbstractGatewayFilterFactory<Config> {
           log.info("UserFilter End: {}", exchange.getResponse());
         }
       }));
-
     };
   }
 
@@ -123,5 +111,32 @@ public class ApiFilter extends AbstractGatewayFilterFactory<Config> {
       throw new GatewayException(ErrorCode.INVALID_HEADER_SITE_ID);
     }
     return siteId;
+  }
+
+  /**
+   * 접속 가능한 도메인 체크
+   *
+   * @param config
+   * @param siteId
+   * @param host
+   */
+  private void validateDomains(final Config config, String siteId, String host) {
+    log.debug("validation check Domains... start");
+    log.debug("check domain => {}", host);
+    log.debug("allow host lrc list => {}", config.getAllowHostProperties().lrc);
+    log.debug("allow host cpc list => {}", config.getAllowHostProperties().cpc);
+    // host : localhost, safe.bithumbsystems.com
+
+    if (siteId.equals(GlobalConstant.LRC_SITE_ID)) {
+      if (!Arrays.stream(config.getAllowHostProperties().lrc).anyMatch( x -> x.indexOf(host) != -1)) {
+        throw new GatewayException(ErrorCode.INVALID_DOMAIN);
+      }
+    } else if(siteId.equals(GlobalConstant.CPC_SITE_ID)) {
+      if (!Arrays.stream(config.getAllowHostProperties().cpc).anyMatch( x -> x.indexOf(host) != -1)) {
+        throw new GatewayException(ErrorCode.INVALID_DOMAIN);
+      }
+    } else {
+      throw new GatewayException(ErrorCode.INVALID_HEADER_SITE_ID);
+    }
   }
 }

@@ -1,6 +1,7 @@
 package com.bithumbsystems.routes;
 
 import com.bithumbsystems.config.Config;
+import com.bithumbsystems.config.properties.AllowHostProperties;
 import com.bithumbsystems.config.properties.UrlProperties;
 import com.bithumbsystems.filter.ApiFilter;
 import com.bithumbsystems.filter.UserFilter;
@@ -17,6 +18,8 @@ import org.springframework.context.annotation.Configuration;
 public class UserAuthRoute {
 
     private final UrlProperties urlProperties;
+    private final AllowHostProperties allowHostProperties;
+
     private final UserFilter userFilter;
     private final ApiFilter apiFilter;
 
@@ -26,22 +29,22 @@ public class UserAuthRoute {
         return builder.routes()
                 .route("user-service",   // 운영자 로그인 처리
                         route -> route.path("/user/**")
-                                .filters(filter -> filter.filter(userFilter.apply(new Config("UserFilter apply", true, true))))
+                                .filters(filter -> filter.filter(userFilter.apply(new Config("UserFilter apply", allowHostProperties, true, true))))
                                 .uri(urlProperties.getSmartAdminGatewayUrl())
                 )
-                .route("adm-service",   // 운영자 로그인 처리
-                        route -> route.path("/adm/**")
-                                .filters(filter -> filter.filter(userFilter.apply(new Config("UserFilter apply", true, true))))
-                                .uri(urlProperties.getSmartAdminGatewayUrl())
-                )
+//                .route("adm-service",   // 운영자 로그인 처리
+//                        route -> route.path("/adm/**")
+//                                .filters(filter -> filter.filter(userFilter.apply(new Config("UserFilter apply", true, true))))
+//                                .uri(urlProperties.getSmartAdminGatewayUrl())
+//                )
                 .route("api-service-cpc",   // 고객보호 API 서비스 호출
                         route -> route.path("/api/*/cpc/**")
-                                    .filters(filter -> filter.filter(apiFilter.apply(new Config("CPC ApiFilter apply", true, true))))
+                                    .filters(filter -> filter.filter(apiFilter.apply(new Config("CPC ApiFilter apply", allowHostProperties, true, true))))
                                 .uri(urlProperties.getSmartAdminGatewayUrl())
                 )
                 .route("api-service-lrc",   // 거래지원 API 서비스 호출
                         route -> route.path("/api/*/lrc/**")
-                                .filters(filter -> filter.filter(apiFilter.apply(new Config("LRC ApiFilter apply", true, true))))
+                                .filters(filter -> filter.filter(apiFilter.apply(new Config("LRC ApiFilter apply", allowHostProperties, true, true))))
                                 .uri(urlProperties.getSmartAdminGatewayUrl())
                 )
                 .build();

@@ -16,7 +16,8 @@ public enum ErrorCode {
     SERVER_RESPONSE_ERROR(904, "API 서버에서 에러가 발생하였습니다!!!"),
     GATEWAY_SERVER_ERROR(905, "Gateway Server Error"),
 
-    USER_ALREADY_LOGIN(906, "User is already login");
+    USER_ALREADY_LOGIN(906, "User is already login"),
+    INVALID_DOMAIN(910, "Invalid Domain Name");
 
     private final int code;
     private final String message;

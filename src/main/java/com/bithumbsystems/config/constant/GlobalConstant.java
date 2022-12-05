@@ -1,5 +1,7 @@
 package com.bithumbsystems.config.constant;
 
+import java.util.Map;
+
 public final class GlobalConstant {
     public static final String KMS_ALIAS_NAME = "key";
     public static final String SQS_URL = "sqs_url";
@@ -13,5 +15,4 @@ public final class GlobalConstant {
     // 실제 확인해야 한다.
     public static final String LRC_SITE_ID = "62a15f4ae4129b518b133127";
     public static final String CPC_SITE_ID = "62a15f4ae4129b518b133128";
-    public static final String MNG_SITE_ID = "62a15f4ae4129b518b133129";
 }

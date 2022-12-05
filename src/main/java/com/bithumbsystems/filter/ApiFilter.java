@@ -128,11 +128,11 @@ public class ApiFilter extends AbstractGatewayFilterFactory<Config> {
     // host : localhost, safe.bithumbsystems.com
 
     if (siteId.equals(GlobalConstant.LRC_SITE_ID)) {
-      if (!Arrays.stream(config.getAllowHostProperties().lrc).anyMatch( x -> x.indexOf(host) != -1)) {
+      if (!config.getAllowHostProperties().lrc.stream().anyMatch( x -> x.indexOf(host) != -1)) {
         throw new GatewayException(ErrorCode.INVALID_DOMAIN);
       }
     } else if(siteId.equals(GlobalConstant.CPC_SITE_ID)) {
-      if (!Arrays.stream(config.getAllowHostProperties().cpc).anyMatch( x -> x.indexOf(host) != -1)) {
+      if (!config.getAllowHostProperties().cpc.stream().anyMatch( x -> x.indexOf(host) != -1)) {
         throw new GatewayException(ErrorCode.INVALID_DOMAIN);
       }
     } else {

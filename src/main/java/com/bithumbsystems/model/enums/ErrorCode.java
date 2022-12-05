@@ -17,7 +17,8 @@ public enum ErrorCode {
     GATEWAY_SERVER_ERROR(905, "Gateway Server Error"),
 
     USER_ALREADY_LOGIN(906, "User is already login"),
-    INVALID_DOMAIN(910, "Invalid Domain Name");
+    INVALID_DOMAIN(910, "Invalid Domain Name"),
+    INVALID_ORIGIN_DOMAIN(911, "Invalid Origin Name");
 
     private final int code;
     private final String message;

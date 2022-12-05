@@ -61,11 +61,12 @@ public class ApiFilter extends AbstractGatewayFilterFactory<Config> {
       log.debug("site_id => {}", siteId);
       String host = request.getHeaders().getOrigin();
 
-      if (host != null) {
-        validateDomains(config, siteId, host.substring(0, host.length()-1)); // 마지막 문자 '/' 제거
-      }else {
-        throw new GatewayException(ErrorCode.INVALID_ORIGIN_DOMAIN);
-      }
+      // TODO: interngal-gateway, inner-gateway 개발 완료 후 주석 풀어야 함.
+//      if (host != null) {
+//        validateDomains(config, siteId, host.substring(0, host.length()-1)); // 마지막 문자 '/' 제거
+//      }else {
+//        throw new GatewayException(ErrorCode.INVALID_ORIGIN_DOMAIN);
+//      }
 
       AtomicReference<String> goUrl = new AtomicReference<>(smartAdminGatewayUrl);
 

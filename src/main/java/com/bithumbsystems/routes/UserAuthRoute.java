@@ -32,11 +32,18 @@ public class UserAuthRoute {
                                 .filters(filter -> filter.filter(userFilter.apply(new Config("UserFilter apply", allowHostProperties, true, true))))
                                 .uri(urlProperties.getSmartAdminGatewayUrl())
                 )
-//                .route("adm-service",   // 운영자 로그인 처리
-//                        route -> route.path("/adm/**")
-//                                .filters(filter -> filter.filter(userFilter.apply(new Config("UserFilter apply", true, true))))
-//                                .uri(urlProperties.getSmartAdminGatewayUrl())
-//                )
+                // debug
+                .route("adm-service",   // 운영자 로그인 처리
+                        route -> route.path("/adm/**")
+                                .filters(filter -> filter.filter(userFilter.apply(new Config("UserFilter apply", allowHostProperties, true, true))))
+                                .uri(urlProperties.getSmartAdminGatewayUrl())
+                )
+                .route("api-service-mng",   // 고객보호 API 서비스 호출
+                        route -> route.path("/api/**")
+                                .filters(filter -> filter.filter(apiFilter.apply(new Config("MNG ApiFilter apply", allowHostProperties, true, true))))
+                                .uri(urlProperties.getSmartAdminGatewayUrl())
+                )
+                // debug end
                 .route("api-service-cpc",   // 고객보호 API 서비스 호출
                         route -> route.path("/api/*/cpc/**")
                                     .filters(filter -> filter.filter(apiFilter.apply(new Config("CPC ApiFilter apply", allowHostProperties, true, true))))

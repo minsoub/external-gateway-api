@@ -113,8 +113,9 @@ public class ApiFilter extends AbstractGatewayFilterFactory<Config> {
       throw new GatewayException(ErrorCode.INVALID_HEADER_SITE_ID);
     }
     // 접속 가능한 사이트 아이디만 검증.
+    // TODO: 나중에 풀어야 함.
     if (!siteId.equals(GlobalConstant.LRC_SITE_ID) && !siteId.equals(GlobalConstant.CPC_SITE_ID)) {
-      throw new GatewayException(ErrorCode.INVALID_HEADER_SITE_ID);
+      // throw new GatewayException(ErrorCode.INVALID_HEADER_SITE_ID);
     }
     return siteId;
   }
